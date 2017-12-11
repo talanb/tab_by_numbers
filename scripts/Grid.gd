@@ -16,21 +16,27 @@ class Tile:
 	func to_string():
 		return "pos: %s color_index=%s state=%s color=%s" % [position, color_index, state, color]
 
-const margin = Vector2(20, 20)
+const margin = Vector2(30, 30)
 
 var screen_width = ProjectSettings.get_setting("display/window/size/width")
 var screen_height = ProjectSettings.get_setting("display/window/size/height");
 
+var variant = "overlap"
+
 var grid = []
 var color_map = []
 var font
+var image
 
 # Initialize the node
 func _ready():
 	font = $Label.get_font("font")
-	
-	var image = preload("res://assets/32x32.png").get_data()
+	image = preload("res://assets/32x32.png").get_data()
 	image.lock()
+	init()
+	
+func init():
+	grid.clear()
 	for x in range(0, image.get_size().x):
 		grid.append([])
 		for y in range(0, image.get_size().y):
@@ -38,7 +44,12 @@ func _ready():
 			var tile = Tile.new()
 			tile.color_index = _get_color_index(pixel_color)
 			tile.color = pixel_color
-			tile.position = Vector2(x * tile.size.x, y * tile.size.y)
+			var x_additional = 0
+			var y_additional = 0
+			if variant == "side_by_side":
+				x_additional = x
+				y_additional = y
+			tile.position = Vector2(x * tile.size.x + x_additional, y * tile.size.y + y_additional)
 			grid[x].append(tile)
 
 # Process an event
@@ -99,3 +110,10 @@ func _find_color(c):
 			return i
 	return -1
 
+func _on_SideBySide_toggled(pressed):
+	if pressed:
+		variant = "side_by_side"
+	else:
+		variant = "overlap"
+	init()
+	update()
