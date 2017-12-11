@@ -1,53 +1,101 @@
 extends Node2D
 
-export(int) var width = 20
-export(int) var height = 18
+enum States { INIT, VALID, INVALID }
 
-var margin = 10
+# Tile class
+class Tile:
+	var width = 32
+	var height = width
 
-var screenWidth = ProjectSettings.get_setting("display/window/size/width")
-var screenHeight = ProjectSettings.get_setting("display/window/size/height");
+	var size = Vector2(width, height)
+	var position = Vector2()
+	var color_index = -1
+	var color = Color(0, 0, 0, 0)
+	var state = INIT
+	
+	func to_string():
+		return "pos: %s color_index=%s state=%s color=%s" % [position, color_index, state, color]
 
-onready var tileTemplate = load("res://scenes/Tile.tscn")
+const margin = Vector2(20, 20)
+
+var screen_width = ProjectSettings.get_setting("display/window/size/width")
+var screen_height = ProjectSettings.get_setting("display/window/size/height");
 
 var grid = []
-var colorMap = []
+var color_map = []
+var font
+
+# Initialize the node
 func _ready():
-	# This gives you an ImageTexture
-	var image_texture_resource = preload("res://assets/Mario_8Bit.png")
+	font = $Label.get_font("font")
 	
-	# This gives you an Image
-	var image = image_texture_resource.get_data()
-	#print(image)
+	var image = preload("res://assets/32x32.png").get_data()
 	image.lock()
-	# This gives you a pixel (check the doc)
-	for y in range(0, image.get_size().y):
-		for x in range(0, image.get_size().x):
-			var c = image.get_pixel(x, y)
-			#print("(%s,%s) %s" % [x, y, c])
-			var t = tileTemplate.instance()
-			var colorIndex
-			if c.a == 1:
-				colorIndex = find_color(c)
-				if colorIndex == -1:
-					colorMap.append(c)
-					colorIndex = colorMap.size() - 1
-					#print("adding color %s at index %s" % [c, colorIndex])
-				if colorIndex == 1:
-					pass
-				c.a = 0
-			else:
-				colorIndex = -1
-			t.init(colorIndex, c)
-			var p = Vector2(x * 32 + 32 - x, y * 32 + 32 - y)
-			t.position = p
-			#print(t.toString())
-			add_child(t)
-	
-	
-func find_color(c):
-	for i in range(0, colorMap.size()):
-		if colorMap[i] == c:
+	for x in range(0, image.get_size().x):
+		grid.append([])
+		for y in range(0, image.get_size().y):
+			var pixel_color = image.get_pixel(x, y)
+			var tile = Tile.new()
+			tile.color_index = _get_color_index(pixel_color)
+			tile.color = pixel_color
+			tile.position = Vector2(x * tile.size.x, y * tile.size.y)
+			grid[x].append(tile)
+
+# Process an event
+func _input(event):
+	if event is InputEventMouseButton && !event.pressed:
+		event.position -= margin
+		var grid_position = Vector2(floor(event.position.x / 32), floor(event.position.y / 32))
+		#print(event.position, grid_position)
+		var tile = grid[grid_position.x][grid_position.y]
+		tile.state = VALID
+		print(tile.to_string())
+		update()
+
+# Draw the grid
+func _draw():
+	if grid.size() == 0:
+		return
+	for x in range(0, grid.size()):
+		for y in range(0, grid[0].size()):
+			var tile = grid[x][y]
+			var rect = Rect2(tile.position + margin, tile.size)
+			match tile.state:
+				INIT:
+					draw_rect(rect, Color(0, 0, 0, 1.0), false)
+					_draw_color_index(tile)
+				VALID:
+					draw_rect(rect, tile.color, true)
+
+# Draw the color index at the center of the tile
+func _draw_color_index(tile):
+	if (tile.color_index == -1):
+		return
+	var string_size = font.get_string_size(String(tile.color_index))
+	draw_string(font, _get_centered_draw_pos(String(tile.color_index), Rect2(tile.position, Vector2(32, 32))), String(tile.color_index), Color(0, 0, 0, 1))
+
+# Find the position for drawing so that _text_ is centered (horizontally and vertically) withing _bounds)
+func _get_centered_draw_pos(text, bounds):
+	var string_size = font.get_string_size(text)
+	return Vector2(bounds.position.x + (bounds.size.x / 2 - string_size.x / 2) + margin.x, bounds.position.y + (bounds.size.y / 2 + string_size.y / 2) + margin.y)
+
+# Given a color, if the color is already in the color_map, return the index where the color resides.
+# Otherwise, add the color to color_map ahd return the index
+func _get_color_index(pixel_color):
+	var color_index
+	if pixel_color.a == 1:
+		color_index = _find_color(pixel_color)
+		if color_index == -1:
+			color_map.append(pixel_color)
+			color_index = color_map.size() - 1
+	else:
+		color_index = -1
+	return color_index
+
+# Iterate through color_map looking for _color_. Return the index, if found, otherwise return -1
+func _find_color(c):
+	for i in range(0, color_map.size()):
+		if color_map[i] == c:
 			return i
 	return -1
 
