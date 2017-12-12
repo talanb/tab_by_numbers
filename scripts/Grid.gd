@@ -16,7 +16,7 @@ class Tile:
 	func to_string():
 		return "pos: %s color_index=%s state=%s color=%s" % [position, color_index, state, color]
 
-const margin = Vector2(30, 30)
+const margin = Vector2(32, 32)
 
 var screen_width = ProjectSettings.get_setting("display/window/size/width")
 var screen_height = ProjectSettings.get_setting("display/window/size/height");
@@ -47,8 +47,8 @@ func init():
 			var x_additional = 0
 			var y_additional = 0
 			if variant == "side_by_side":
-				x_additional = x
-				y_additional = y
+				x_additional = x 
+				y_additional = y 
 			tile.position = Vector2(x * tile.size.x + x_additional, y * tile.size.y + y_additional)
 			grid[x].append(tile)
 
