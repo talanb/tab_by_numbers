@@ -6,13 +6,19 @@ enum States { INIT, VALID, INVALID }
 class Tile:
 	var width = 32
 	var height = width
-
+	
+	var rect setget ,get_rect
 	var size = Vector2(width, height)
 	var position = Vector2()
 	var color_index = -1
 	var color = Color(0, 0, 0, 0)
 	var state = INIT
 	
+	func get_rect():
+		if not rect:
+			rect = Rect2(position, size)
+		return rect
+		
 	func to_string():
 		return "pos: %s color_index=%s state=%s color=%s" % [position, color_index, state, color]
 
@@ -32,10 +38,11 @@ var image
 func _ready():
 	font = $Label.get_font("font")
 	image = preload("res://assets/32x32.png").get_data()
+	print(image)
 	image.lock()
-	init()
+	_build_grid()
 	
-func init():
+func _build_grid():
 	grid.clear()
 	for x in range(0, image.get_size().x):
 		grid.append([])
@@ -43,6 +50,7 @@ func init():
 			var pixel_color = image.get_pixel(x, y)
 			var tile = Tile.new()
 			tile.color_index = _get_color_index(pixel_color)
+			print(pixel_color)
 			tile.color = pixel_color
 			var x_additional = 0
 			var y_additional = 0
@@ -55,12 +63,13 @@ func init():
 # Process an event
 func _input(event):
 	if event is InputEventMouseButton && !event.pressed:
-		event.position -= margin
-		var grid_position = Vector2(floor(event.position.x / 32), floor(event.position.y / 32))
-		#print(event.position, grid_position)
-		var tile = grid[grid_position.x][grid_position.y]
+		var tile = _find_tile_with_point(event.position)
+		print(tile.to_string())	
+#		event.position -= margin
+#		var grid_position = Vector2(floor(event.position.x / 32), floor(event.position.y / 32))
+#		#print(event.position, grid_position)
+#		var tile = grid[grid_position.x][grid_position.y]
 		tile.state = VALID
-		print(tile.to_string())
 		update()
 
 # Draw the grid
@@ -77,6 +86,14 @@ func _draw():
 					_draw_color_index(tile)
 				VALID:
 					draw_rect(rect, tile.color, true)
+
+func _find_tile_with_point(pos):
+	for x in range(0, grid.size()):
+		for y in range(0, grid[x].size()):
+			var tile = grid[x][y]
+			if tile.rect.has_point(pos):
+				return tile
+	return null
 
 # Draw the color index at the center of the tile
 func _draw_color_index(tile):
@@ -115,5 +132,5 @@ func _on_SideBySide_toggled(pressed):
 		variant = "side_by_side"
 	else:
 		variant = "overlap"
-	init()
+	_build_grid()
 	update()
